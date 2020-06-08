@@ -1,0 +1,381 @@
+openapi: 3.0.0
+info:
+  title: Frontier API
+  version: '1.0'
+  description: |-
+    Frontier is a smart cache service which is built to remove pressure from our Rails server and provide APIs to fetch a "whole store" as one request, which is convenient for some areas like mobile APIs.
+
+    Main concepts
+
+    * Baseline — snapshot of read-only PostgreSQL follower database at some time T1 in the past.
+    * Patches — changes done since time T1.
+
+    Baseline + Patches = actual state.
+
+    Using API from the clients (e.g. mobile Flutter app):
+
+    * When you call `/api/stores/{store_id}/full` you get the Baseline.
+    * When you open websocket `wss` connection at `/ws/{store_id}`, you get the list of all current patches as the first message in the websocket; After that you subsequently receive every new change in the socket as a separate message.
+
+    Using API from the Rails monolith:
+
+    * When any of the entities are updated or deleted, you then call corresponding `PATCH`/`DELETE` hook with the full entity payload, incuding relationships. Check corresponding endpoint descriptions.
+servers:
+  - url: 'https://frontier.staging.uscreen.cloud'
+    description: Staging
+paths:
+  '/api/stores/{store_id}/authors/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: store_id
+        in: path
+        required: true
+        description: Store primary key from the PostgreSQL follower database.
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+    put:
+      summary: ''
+      operationId: put-api-stores-$-store_id-authors
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              Example:
+                value:
+                  id: 4058
+                  title: John Black
+                  image: small_small_CCxaWe8qR722r0UtfSnh_Gedankenkraft_20Portrait1.jpg
+                  position: 25
+                  description: '<p>Since 2009 John Black has been a yoga teacher. The joy of imparting knowledge had already gripped him when he started teaching Taekwondo at the age of 16. Meanwhile, he teaches during the week at Inside Yoga in Frankfurt and is on tour on weekends as an international workshop holder and yoga teacher trainer.</p>'
+                  permalink: john-black
+                  meta_title: John Black
+                  meta_description: Since 2009 John Black has been a yoga teacher.
+          application/xml:
+            schema:
+              type: object
+              properties: {}
+        description: 'Whole author model with schema equal to the example. Partial updates are not supported, the entity is written as is.'
+      description: 'Overwrites an author when provided its {id} and {store_id}; Invalidates cached GET results (e.g. `/full`) where it was used.'
+    delete:
+      summary: ''
+      operationId: delete-api-stores-store_id-authors
+      responses:
+        '200':
+          description: OK
+      description: |-
+        Deletes an author from all caches.
+
+        This will delete an entry from "authors" collection.
+
+        NOTE: This doesn't invalidate entities that reference authors, so the ID of the deleted author might still appear in other entities. Just ignore it in those cases.
+  '/api/stores/{store_id}/contents/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: store_id
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+    put:
+      summary: ''
+      operationId: put-api-stores-$-store_id-contents
+      responses:
+        '200':
+          description: OK
+      description: 'Overwrites content when provided its {id} and {store_id}; Invalidates cached GET results (e.g. `/full`) where it was used.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+            examples:
+              Collection:
+                value:
+                  id: 67289
+                  content_type: 0
+                  title: Yoga for Travel - Invest in Yourself (German)
+                  preview: data_2Fimages_2FKyjrAU8ES2eMG43cCcIq_LH_20-_20German-100.jpg
+                  description: "<p>Du möchtest unangenehmen Stress und plagende Rücken- oder Nackenschmerzen loswerden?</p>\r\n<p>Dafür brauchst Du nur 5 Minuten. Wähle das passende Video und starte hier und jetzt. Egal ob zu Hause, im Büro oder auf Reisen. Alles was Du brauchst ist ein Stuhl oder den Boden.</p>\r\n<p>Mit diesen vier Kurztrainings wirst Du effektiv Stress los und bekämpfst typische körperliche Alltagsbeschwerden. Investiere jetzt in Deine Gesundheit.</p>"
+                  short_description: ''
+                  permalink: yoga-for-travel-invest-in-yourself-german
+                  children:
+                    - type: video
+                      position: 7
+                      content_id: 76131
+                    - type: video
+                      position: 6
+                      content_id: 76134
+                    - type: video
+                      position: 5
+                      content_id: 76133
+                    - type: video
+                      position: 4
+                      content_id: 76132
+                    - type: divider
+                      position: 3
+                    - type: video
+                      position: 2
+                      content_id: 284763
+                    - type: video
+                      position: 1
+                      content_id: 76128
+                  tags:
+                    - lufthansa
+                    - Young Ho Kim
+                    - youngho
+                    - Nacken
+                    - Gesunder Nacken
+                    - Gesunder Rücken
+                    - German
+                    - Deutsch
+                    - Anfänger
+                    - Starter start
+                    - Basic
+                    - Basics
+                    - Business Yoga
+                    - Rückenschmerzen
+                    - finger
+                    - finger yoga
+                    - Relax
+                    - stress relief
+                  author_id: 3947
+                  custom_fields:
+                    custom_field_1528: '0'
+                    custom_field_1551: '1'
+                    custom_field_1580: '0'
+                  videos_count: 6
+                  meta_title: ''
+                  meta_description: ''
+              Video:
+                value:
+                  id: 346970
+                  content_type: 1
+                  title: Preview - All About Alignment Live
+                  preview: 'https://dtsvkkjw40x57.cloudfront.net/images/programs/346970/horizontal/868123522_1920x1080.jpg'
+                  description: '<p><br></p>'
+                  permalink: all-about-alignment_andrea-kim_preview-169-18e6fc
+                  duration: 245
+                  custom_fields: {}
+                  videos_count: null
+              Stream:
+                value:
+                  id: 84839
+                  content_type: 2
+                  title: TEST Live Event
+                  preview: 'https://dtsvkkjw40x57.cloudfront.net/images/programs/84839/horizontal/WxLnFrmTQ999mWuDdZzs_thumbnail-inside-flow-vienna_uscreen-thumbnail.jpg'
+                  description: '<p>Description</p>'
+                  short_description: ''
+                  permalink: z9q5kxr7qcekvfx59xlffg
+                  custom_fields: {}
+                  videos_count: null
+        description: |-
+          Whole content model with schema equal to the example. Partial updates are not supported, the entity is written as is.
+
+          IMPORTANT 1: If content has "Collection" type, the payload !must! contain "children" key with all its child videos as shown in the example.
+
+          IMPORTANT 2: All preview URLs must contain full paths
+    delete:
+      summary: ''
+      operationId: delete-api-stores-store_id-contents-id
+      responses:
+        '200':
+          description: OK
+      description: |-
+        Deletes this content from all caches.
+
+        This will delete an entry from "contents" collection.
+
+        NOTE: This doesn't invalidate entities which reference contents, so the ID of the deleted content might still appear in other entities. Just ignore it in those cases.
+  '/api/stores/{store_id}/categories/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: store_id
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+    put:
+      summary: ''
+      operationId: put-api-stores-store_id-categories
+      responses:
+        '200':
+          description: OK
+      description: 'Overwrites a category when provided its {id} and {store_id}; Invalidates cached GET results (e.g. `/full`) where it was used.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+            examples:
+              Example:
+                value:
+                  id: 11240
+                  title: Vinyasa
+                  position: 15
+                  description: '<p>Vinyasa yoga links movement and breath to each other in order to attain balance in the mind and body. In this yoga style, the focus is on aligning a deliberate sequence of poses with the breath to achieve a continuous flow. The movement from one pose to another occurs through inhalation and exhalation, showing the connection between movement and breath.</p><p>Vinyasa yoga helps with building overall strength and flexibility, provides a cardiovascular benefit and gives practitioners a calming mental focal point through the steady breathing cycle.</p>'
+                  featured: false
+                  image: oD5fKRfiTk2mMsgpKKAY_vinyasa_20thumbnail.png
+                  permalink: vinyasa
+                  content_ids:
+                    - 447768
+                    - 408031
+                    - 405986
+                    - 402347
+                    - 402129
+                    - 399677
+                    - 392506
+                    - 383424
+                    - 377747
+                    - 374333
+                    - 372594
+                    - 370498
+                    - 370505
+                    - 370271
+                    - 370279
+                    - 363386
+                    - 348567
+                    - 343164
+                    - 340690
+                    - 338821
+                    - 282526
+                    - 273589
+                    - 270348
+                    - 268188
+                    - 260453
+                    - 247270
+                    - 237507
+                    - 186607
+                    - 150696
+                    - 136450
+                    - 133617
+                    - 87601
+                    - 86041
+                    - 84854
+                    - 84464
+                    - 58794
+                    - 51217
+                    - 51542
+                    - 52212
+                    - 51543
+                    - 52223
+                    - 52202
+                    - 56192
+                    - 58792
+                    - 51535
+                    - 52215
+                    - 52205
+                    - 52207
+                    - 52209
+                    - 51531
+                    - 51544
+        description: |-
+          Whole category model with schema equal to the example. Partial updates are not supported, the entity is written as is.
+
+          VERY IMPORTANT: the payload !must! contain "content_ids" key with all child contents in the specified category.
+    delete:
+      summary: ''
+      operationId: delete-api-stores-store_id-categories-id
+      responses:
+        '200':
+          description: OK
+      description: |-
+        Deletes this category from all caches.
+
+        This will delete an entry from "categories" collection.
+
+        NOTE: This doesn't invalidate entities which reference categories, so the ID of the deleted category might still appear in other entities. Just ignore it in those cases.
+  '/api/stores/{store_id}':
+    parameters:
+      - schema:
+          type: string
+        name: store_id
+        in: path
+        required: true
+    put:
+      summary: ''
+      operationId: put-api-stores-store_id-stores
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+            examples:
+              Example:
+                value:
+                  id: 5524
+                  title: TINT Yoga
+                  custom_fields:
+                    - id: 1528
+                      title: Intensity
+                      options:
+                        - Level 1
+                        - Level 2
+                        - Level 3
+                      position: 2
+                      field_type: 2
+                    - id: 1551
+                      title: Language
+                      options:
+                        - English
+                        - German
+                        - Korean
+                      position: 3
+                      field_type: 2
+                    - id: 1580
+                      title: Difficulty
+                      options:
+                        - Beginner
+                        - Intermediate
+                        - Professional
+                      position: 1
+                      field_type: 2
+        description: |-
+          Whole store model with schema equal to the example. Partial updates are not supported, the entity is written as is.
+
+          VERY IMPORTANT: the payload !must! contain "custom_fields" key with all custom fields for the specified store.
+      description: 'Overwrites a store when provided its {store_id}; Invalidates cached GET results (e.g. `/full`) where it was used.'
+  '/api/stores/{store_id}/full':
+    parameters:
+      - schema:
+          type: string
+        name: store_id
+        in: path
+        required: true
+    get:
+      summary: Your GET endpoint
+      tags: []
+      responses: {}
+      operationId: get-api-stores-store_id-full
+      description: |-
+        Fetches entire store from the PostgreSQL read-only follower-db;
+
+        First call is slow, consequent calls are fast (Cached).
+
+        Result of this call contains practically everything about the selected store and is very heavy, so don't re-fetch it frequently, that is not the purpose of this API.
+
+        If you need to react quickly and provide quick updates, use the web-socket which communicates all changes immediately.
+components:
+  schemas: {}
